@@ -11,13 +11,69 @@
 %| files (if they exist) or are input by the user (if they  |
 %| don't).                                                  |
 %| ---------------------------------------------------------|
-%| Output:                                                  |
+%| Output: a series of .mat files containing:               |
 %| [rawData, fps]                                           |
 %|       rawData: raw photon count data            (uint16) |
 %|       fps:     frame rate in frames per second  (double) |
 %' ---------------------------------------------------------'
+function sfmovImport()
+% Get names of files using fNameGet()
+fNames=fNameGet();
 
-function [rawData,fps] = sfmovImport(fName)
+% Extract data and frame rate using sfmovImport() for each filename.
+% sfmovImport() accepts a single cell input containing the filename,
+% without any filetype extension. For example, to import 'data1.sfmov'
+% without using fNameGet, one might use the code:
+%   fName = {'data1'};
+%   dataIn = sfmovImport(fName);
+
+for i=1:length(fNames)
+    [dataIn, fps] = sfmovImport(fNames(i));
+    save(fNames(i), 'dataIn', 'fps', '-v7.3')
+end
+
+%% SUBFUNCTIONS
+function fNameOut = fNameGet()
+% fNameGet()
+% Allows user to select .sfmov files to be imported and adds the directory
+% to the working path. Returns a cell with the names of each file selected
+% with the filetype removed. If file selection is cancelled, a blank cell
+% will be returned.
+
+% select filetype
+fType='.sfmov';
+
+% add path with IR data files
+[fileName, filePath] = uigetfile(['*' fType],...
+    'Select IR data',...
+    'Multiselect','on');
+if ~iscell(fileName)
+    if fileName == 0
+        fNameOut={};
+        youKilledIt();
+        return
+    else
+        addpath(filePath);
+        fNameOut=char(fileName);
+        fNameOut=cellstr(fNameOut(1:strfind(fNameOut,fType)-1));
+    end
+else
+    addpath(filePath);
+    fNameOut=cell(size(fileName));
+    for i=1:size(fileName,2)
+        fNameTemp=char(fileName(i));
+        fNameOut(i)=cellstr(fNameTemp(1:strfind(fNameTemp,fType)-1));
+    end
+end
+
+    function youKilledIt()
+        warndlg('You didn''t select a file. Good job, ya dingus.',...
+            'No File Selected',...
+            'modal')
+    end
+end
+
+function [rawData,fps] = Import(fName)
 % set filetype to open - for easier debugging
 fType='.sfmov';
 fName=char(fName);
@@ -87,7 +143,7 @@ fName=char(fName);
         fclose('all');
         fprintf('Done!\n\n')
         
-%% SUBFUNCTIONS
+end
 
 % chop out irrelevant portions of data
     function [loc,wIm,hIm] = dataChop(fName)
